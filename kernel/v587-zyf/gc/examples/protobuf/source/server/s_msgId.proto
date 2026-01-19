@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option go_package = "../../out/server;server";
+
+package server.s_msgId;
+
+enum S_MSG {
+  ID_Hello_Request = 0;
+  ID_Hello_Response = 1;
+}

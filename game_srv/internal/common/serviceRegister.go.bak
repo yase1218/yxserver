@@ -1,0 +1,129 @@
+package common
+
+import (
+	"context"
+	"github.com/v587-zyf/gc/log"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
+	"kernel/tools"
+	"server/internal/publicconst"
+	"time"
+)
+
+type ServiceRegister struct {
+	// etcd client
+	cli *clientv3.Client
+	// service register key
+	serviceKey string
+	// service register prefix
+	serviceKeyPrefix string
+	// service register endpoint
+	endpoint string
+	// leaseID
+	leaseID clientv3.LeaseID
+}
+
+func NewServiceRegister(
+	endpoints []string,
+	serviceKeyPrefix string,
+	serviceKey string,
+	serverInfo string) *ServiceRegister {
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		log.Error("etcd connect err", zap.Error(err))
+		//log.Errorf("etcd connect faith...")
+		return nil
+	}
+
+	serviceReg := &ServiceRegister{
+		cli:              cli,
+		serviceKey:       serviceKey,
+		serviceKeyPrefix: serviceKeyPrefix,
+		endpoint:         serverInfo,
+	}
+
+	return serviceReg
+}
+
+func (s *ServiceRegister) Register(ttl int64) error {
+	//serviceResp, err := s.cli.Get(context.Background(), s.serviceKeyPrefix, clientv3.WithPrefix())
+	//if err != nil {
+	//	log.Error("etcd err:%v", err)
+	//	return err
+	//}
+	// 首先判断当前前缀下是否有同一Lease
+	//for _, kv := range serviceResp.Kvs {
+	//	// exist Grant
+	//	if kv.Lease != 0 {
+	//		// 设置租约ID
+	//		s.leaseID = clientv3.LeaseID(kv.Lease)
+	//		break
+	//	}
+	//}
+
+	err := s.regiserverServer(ttl)
+	if err != nil {
+		log.Error("register err", zap.Error(err))
+		//log.Errorf("Register err:%v", err)
+		return err
+	}
+
+	// 续约操作
+	go tools.GoSafe("service register ListenKeepAliveChan", func() {
+		s.ListenKeepAliveChan()
+	})
+	return nil
+}
+
+func (s *ServiceRegister) ListenKeepAliveChan() {
+	lease := clientv3.NewLease(s.cli)
+	keepAlive, err := lease.KeepAlive(context.Background(), s.leaseID)
+	if err != nil {
+		log.Error("keepAlive err", zap.Error(err))
+		//log.Errorf("keepAlive faith...")
+		return
+	}
+
+	go tools.GoSafe("service register loop", func() {
+		for {
+			res := <-keepAlive
+			if res == nil {
+				err = s.regiserverServer(int64(publicconst.MAX_SERVER_TTL))
+				if err != nil {
+					log.Error("ListenKeepAliveChan err", zap.Error(err))
+					//log.Errorf("ListenKeepAliveChan err:%v", err)
+				} else {
+					keepAlive, err = lease.KeepAlive(context.Background(), s.leaseID)
+					if err != nil {
+						log.Error("keepAlive err", zap.Error(err))
+						//log.Errorf("keepAlive faith... err:%v", err)
+					}
+				}
+				log.Error("ListenKeepAliveChan res is nil")
+				//log.Errorf("ListenKeepAliveChan res is nil")
+			}
+		}
+	})
+}
+
+func (s *ServiceRegister) regiserverServer(ttl int64) error {
+	grant, err := s.cli.Grant(context.Background(), ttl)
+	if err != nil {
+		log.Error("申请租约失败", zap.Error(err))
+		//log.Errorf("申请租约失败 err:%v", err)
+		return err
+	}
+	s.leaseID = grant.ID
+
+	// 进行注册 设置服务 并绑定租约
+	if _, err := s.cli.Put(context.Background(), s.serviceKey, s.endpoint, clientv3.WithLease(s.leaseID)); err != nil {
+		log.Error("服务注册失败", zap.Error(err))
+		//log.Errorf("服务注册失败 err:%v", err)
+		return err
+	}
+	return nil
+}

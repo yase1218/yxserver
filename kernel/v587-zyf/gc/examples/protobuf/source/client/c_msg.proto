@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option go_package = "../../out/client;pb";
+
+package client.c_msg;
+
+enum MyEnum {
+  ENUM_VALUE_1 = 0;
+  ENUM_VALUE_2 = 1;
+}
+
+message MyMessage {
+  MyEnum my_enum = 1;
+}

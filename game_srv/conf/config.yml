@@ -1,0 +1,65 @@
+server_id: 1
+server_name: st
+cdk_server_id: 3000000
+sandbox: true
+gm: true
+whitelist: false
+gm_time: true
+
+max_conn_num: 20000
+max_register_num: 5000
+
+go_pool_size: 1000
+csv_path: ../cfg_csv/
+
+prof: true #是否开启pprof
+
+# gto打点
+rbi:
+  open: false       # 是否开启
+  url: 10.128.20.41 # 打点服务地址
+  port: 37500       # 打点服务端口
+  test: true        # 是否测试(弃用)
+
+tcp:
+  addr: :3567
+  link_addr: 192.168.0.134:3567
+
+ws:
+  addr: 192.168.0.134:3567
+
+grpc:
+  addr: 127.0.0.1:9001
+
+etcd:
+  addrs:
+    - http://127.0.0.1:2379
+
+redis:
+  addr: 127.0.0.1:6379
+  pass:
+nats:
+  addr: nats://127.0.0.1:4222
+
+global_mongo:
+  url: mongodb://127.0.0.1:27017
+  db: space_war_global
+
+local_mongo:
+  url: mongodb://127.0.0.1:27017
+  db: space_war_local
+  max_conn: 100
+  work_count: 8
+  queue_size: 1024
+  batch_size: 100
+  flush_timeout: 30
+
+statics_mongo:
+  url: mongodb://127.0.0.1:27017
+  db: space_war_statics
+
+leiting_sdk:
+  key:  vfjNRn0TnfWTivDb
+  game:  kulu
+  domain: https://ltpaykulu.leiting.com/
+  notify_url: http://spacewar.nice-game.cn/api/out/leitingshipment

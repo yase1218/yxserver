@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option go_package = "../../out/server;server";
+
+package server.s_msg;
+
+enum MyEnum {
+  ENUM_VALUE_1 = 0;
+  ENUM_VALUE_2 = 1;
+}
